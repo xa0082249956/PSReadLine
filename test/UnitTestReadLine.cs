@@ -11,6 +11,7 @@ using System.Threading;
 using Microsoft.PowerShell;
 using Microsoft.PowerShell.Internal;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Test
 {
@@ -389,7 +390,7 @@ namespace Test
         Member,
     }
 
-        public partial class ReadLine
+    public partial class ReadLine
     {
         static ReadLine()
         {
@@ -434,6 +435,13 @@ namespace Test
             CharToKeyInfo['/'] = _.Slash;
             CharToKeyInfo['\n'] = new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false);
             CharToKeyInfo['\r'] = new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false);
+        }
+
+        // The following field is static so it can be used from our mocked console or other non-test class code.
+        public static ITestOutputHelper testOutput;
+        public ReadLine(ITestOutputHelper output)
+        {
+            testOutput = output;
         }
 
         private enum KeyMode
