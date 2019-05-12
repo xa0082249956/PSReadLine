@@ -1,0 +1,51 @@
+parameters:
+  pool: 'Hosted VS2017'
+  jobName: 'win_build_test'
+  displayName: Windows Build/Test
+
+jobs:
+- job: ${{ parameters.jobName }}
+  pool:
+    name: ${{ parameters.pool }}
+
+  displayName: ${{ parameters.displayName }}
+
+  steps:
+  - pwsh: |
+      Get-ChildItem -Path env:
+      $IsAdmin = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
+      Write-Host "Is elevated? $IsAdmin"
+    displayName: Capture environment
+    condition: succeededOrFailed()
+
+  - pwsh:  Write-Host "##vso[build.updatebuildnumber]$env:BUILD_SOURCEBRANCHNAME-$env:BUILD_SOURCEVERSION-$((get-date).ToString("yyyyMMddhhmmss"))"
+    displayName: Set Build Name for Non-PR
+    condition: ne(variables['Build.Reason'], 'PullRequest')
+
+  - pwsh: |
+      $(Build.SourcesDirectory)\build.ps1 -Bootstrap
+      $Framework = if ($IsWindows) { 'net461' } else { 'netcoreapp2.1' }
+      # Set the framework for build
+      $vstsCommandString = "vso[task.setvariable variable=Framework]$Framework"
+      Write-Host "sending " + $vstsCommandString
+      Write-Host "##$vstsCommandString"
+    displayName: Bootstrap
+
+  - pwsh: |
+      $(Build.SourcesDirectory)\build.ps1 -Configuration Release -Framework $(Framework)
+      # Set target folder path
+      $OutputPath = Join-Path $(Build.SourcesDirectory) bin Release
+      $vstsCommandString = "vso[task.setvariable variable=Output]$OutputPath"
+      Write-Host "sending " + $vstsCommandString
+      Write-Host "##$vstsCommandString"
+    displayName: Build
+
+  - pwsh: |
+      $(Build.SourcesDirectory)\build.ps1 -Test -Configuration Release -Framework $(Framework)
+    displayName: xUnit Tests
+
+  - pwsh: |
+      Get-ChildItem -Path $(Output) -Recurse
+      $ZipFile = Join-Path $(Output) PSReadLine.zip
+      Write-Host "##vso[artifact.upload containerfolder=PSReadLine;artifactname=PSReadLine]$ZipFile"
+    displayName: Upload Artifact
