@@ -796,8 +796,8 @@ namespace Microsoft.PowerShell
             }
             else if (spacesNeeded < 0)
             {
-                _console.Write(item.Length.ToString());
-                _console.Write(columnWidth.ToString());
+                _console.Write(string(item.Length));
+                _console.Write(string(columnWidth));
                 item = item.Substring(0, columnWidth - 3) + "...";
             }
 
